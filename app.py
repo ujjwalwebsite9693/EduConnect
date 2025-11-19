@@ -173,14 +173,10 @@ with app.app_context():
     init_db()
 
 
-# 🔹 This will run ONCE on Render when the first request comes in
-@app.before_first_request
-def ensure_database():
-    """
-    Ensures tables + default users exist when running under gunicorn/Render.
-    """
-    init_db()
-
+# now your routes start below
+@app.route("/")
+def home():
+    return redirect(url_for("login"))
 
 # ============================================================
 #                         AUTH HELPERS
