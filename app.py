@@ -382,22 +382,22 @@ def teacher_dashboard():
     grouped_solutions = list(grouped_solutions.values())
 
     return render_template(
-        "teacher_dashboard.html",
-        user=user,
-        papers=papers,
-        solutions=grouped_submissions,
-        total_papers=total_papers,
-        total_solutions=total_solutions,
-        avg_marks=avg_marks,
-        total_students=total_students,
-        student_stats=student_stats,
-        best_student=best_student,
-        grouped_solutions=grouped_solutions,
-        total_answered_papers=total_answered_papers,
-        total_not_answered_papers=total_not_answered_papers,
-        total_graded_solutions=total_graded_solutions,
-        total_not_graded_solutions=total_not_graded_solutions,
-    )
+    "teacher_dashboard.html",
+    user=user,
+    papers=papers,
+    solutions=ungraded_submissions,   # 👈 ONLY ones that still need marks
+    total_papers=total_papers,
+    total_solutions=total_solutions,
+    avg_marks=avg_marks,
+    total_students=total_students,
+    student_stats=student_stats,
+    best_student=best_student,
+    grouped_solutions=grouped_solutions,
+    total_answered_papers=total_answered_papers,
+    total_not_answered_papers=total_not_answered_papers,
+    total_graded_solutions=total_graded_solutions,
+    total_not_graded_solutions=total_not_graded_solutions,
+)
 
 # ============================================================
 #               TEACHER — UPLOAD SAMPLE PAPER
