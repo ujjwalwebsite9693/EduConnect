@@ -1,0 +1,615 @@
+/* =========================================================
+   EDUCONNECT – FULL DARK THEME CSS
+   Safe: no hiding, .fade always visible
+========================================================= */
+
+/* ---------- COLOR PALETTE ---------- */
+:root {
+    --bg: #020617;
+    --bg-elevated: #020817;
+    --card: #020617;
+    --card-soft: #0b1120;
+
+    --border-soft: #1f2937;
+
+    --text: #e5e7eb;
+    --text-soft: #9ca3af;
+
+    --accent: #3b82f6;
+    --accent-strong: #1d4ed8;
+    --accent-soft: rgba(59,130,246,0.25);
+
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #eab308;
+}
+
+/* =========================================================
+   GLOBAL RESET + DARK OVERRIDE
+========================================================= */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: "Poppins", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Bootstrap .fade normally sets opacity:0; keep always visible */
+.fade {
+    opacity: 1 !important;
+    animation: fadeInMove 0.20s ease;
+}
+
+@keyframes fadeInMove {
+    from { transform: translateY(4px); }
+    to   { transform: translateY(0); }
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb {
+    background: #111827;
+    border-radius: 999px;
+}
+
+/* Links */
+a {
+    text-decoration: none !important;
+    color: inherit;
+}
+
+/* Force dark on any "light" Bootstrap component */
+.bg-white,
+.bg-light,
+.card,
+.modal-content {
+    background-color: var(--card-soft) !important;
+    color: var(--text) !important;
+}
+
+/* Text colors – kill text-dark / default black */
+.text-dark,
+.text-body,
+h1, h2, h3, h4, h5, h6,
+p, span, label, small, li {
+    color: var(--text) !important;
+}
+.text-muted,
+small.text-muted {
+    color: var(--text-soft) !important;
+}
+
+/* Body containers */
+body > .container,
+.teacher-page-wrapper,
+.student-page-wrapper {
+    background-color: var(--bg);
+}
+
+/* =========================================================
+   NAVBAR
+========================================================= */
+
+.main-navbar {
+    background-color: #00040b !important;
+    border-bottom: 1px solid #111827;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.95);
+}
+
+.navbar-brand {
+    color: var(--accent) !important;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+/* Center nav pills */
+.nav-link {
+    font-weight: 500;
+    color: var(--text-soft) !important;
+    padding: 8px 16px !important;
+    border-radius: 999px;
+    transition: background 0.2s, color 0.2s, transform 0.1s, box-shadow 0.1s;
+}
+.nav-link:hover {
+    background-color: var(--accent-soft);
+    color: var(--accent) !important;
+    transform: translateY(-1px);
+}
+.nav-link.active {
+    background-color: var(--accent) !important;
+    color: #ffffff !important;
+    box-shadow: 0 12px 30px rgba(59,130,246,0.7);
+}
+
+/* Navbar toggler (mobile) */
+.navbar-toggler {
+    border-color: #4b5563;
+}
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28229,231,235,0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* Right side text */
+.navbar .small.text-muted {
+    color: var(--text-soft) !important;
+}
+
+/* =========================================================
+   LOGIN PAGE (login.html)
+========================================================= */
+
+.login-card {
+    width: 380px;
+    max-width: 100%;
+    background:
+      radial-gradient(circle at top left, #111827 0, transparent 55%),
+      radial-gradient(circle at bottom right, #020617 0, transparent 60%),
+      #020617;
+    color: var(--text);
+    border-radius: 22px;
+    padding: 28px 26px 24px;
+    box-shadow: 0 20px 45px rgba(0,0,0,0.96);
+    border: 1px solid var(--border-soft);
+}
+
+.login-input {
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+    background-color: #020617;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 0.9rem;
+}
+.login-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.12rem rgba(59,130,246,0.6);
+}
+
+.login-btn {
+    border-radius: 999px;
+    background-color: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    border: none;
+    padding: 10px 0;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.1s;
+}
+.login-btn:hover {
+    background-color: var(--accent-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(59,130,246,0.8);
+}
+
+/* =========================================================
+   GENERIC CARDS – OVERVIEW / STATS / STUDENT
+========================================================= */
+
+.summary-card,
+.stat-card {
+    background-color: var(--card-soft);
+    border-radius: 18px;
+    padding: 16px 16px 14px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.95);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s;
+}
+.summary-card:hover,
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 24px 60px rgba(0,0,0,1);
+    border-color: var(--accent-soft);
+}
+
+.summary-label,
+.stat-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+}
+.summary-value,
+.stat-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+.summary-subtext {
+    font-size: 0.8rem;
+    color: var(--text-soft);
+}
+
+/* Student performance cards */
+.student-card {
+    background: linear-gradient(135deg, #020617 0%, #020617 40%, #020617 100%);
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.98);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s;
+}
+.student-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 24px 70px rgba(0,0,0,1);
+    border-color: var(--accent-soft);
+}
+
+.student-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    background: radial-gradient(circle at top left, rgba(59,130,246,0.35), transparent 60%);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    margin-right: 10px;
+}
+.student-name { font-weight: 600; }
+.student-username { font-size: 0.8rem; color: var(--text-soft); }
+
+.metric-box {
+    background-color: #020617;
+    border-radius: 14px;
+    border: 1px solid #1f2937;
+    padding: 8px 10px;
+    text-align: center;
+}
+.metric-label { font-size: 0.7rem; color: var(--text-soft); }
+.metric-value { font-size: 1.1rem; font-weight: 700; }
+.metric-sub { font-size: 0.7rem; color: var(--text-soft); }
+
+/* Thin progress bar */
+.progress-thin {
+    height: 6px;
+    border-radius: 999px;
+    background-color: #111827;
+}
+.progress-thin .progress-bar {
+    background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+}
+
+/* Generic containers */
+.center-card,
+.glass-card,
+.upload-card,
+.upload-solution-card,
+.uploaded-papers-card {
+    background-color: var(--card-soft);
+    border-radius: 18px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.95);
+    padding: 18px;
+}
+
+/* =========================================================
+   UPLOAD AREAS (teacher + student)
+========================================================= */
+
+.upload-dropzone,
+.upload-box {
+    position: relative;
+    border-radius: 16px;
+    border: 2px dashed rgba(59,130,246,0.7);
+    background: #020617;
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;
+}
+.upload-dropzone:hover,
+.upload-box:hover {
+    background: #020617;
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 32px rgba(0,0,0,0.9);
+}
+
+/* Only file input in teacher upload zone overlays the box */
+.upload-dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* For student upload area using label+input pattern, leave default */
+
+.upload-icon { font-size: 2.4rem; color: var(--accent); }
+.upload-title { margin-top: 10px; font-size: 1rem; font-weight: 600; }
+.upload-sub { margin-top: -2px; font-size: 0.8rem; color: var(--text-soft); }
+
+/* Student upload solution – hide native file button */
+.upload-box input[type="file"] {
+    position: absolute;
+    inset: 0;          /* top:0; right:0; bottom:0; left:0 */
+    opacity: 0;        /* invisible */
+    cursor: pointer;   /* pointer over whole box */
+}
+
+/* =========================================================
+   TABLES (grading, uploaded, results, solutions)
+========================================================= */
+
+.table {
+    font-size: 0.9rem;
+    color: var(--text) !important;
+    background-color: var(--card-soft) !important;
+}
+.table thead {
+    background: #020617 !important;
+    color: var(--text) !important;
+}
+.table thead th {
+    border-bottom: 1px solid #111827 !important;
+}
+.table tbody tr {
+    border-bottom: 1px solid #111827 !important;
+    background-color: #020617 !important;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #020617 !important;
+}
+.table-striped tbody tr:nth-of-type(even) {
+    background-color: #020617 !important;
+}
+.table .btn-sm {
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+/* Uploaded papers special wrapper */
+.uploaded-papers-card {
+    max-width: 1100px;
+    margin-inline: auto;
+    margin-top: 10px;
+}
+.file-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    background-color: #020617;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 1.1rem;
+}
+.rename-input {
+    max-width: 200px;
+    background-color: #020617 !important;
+    color: var(--text) !important;
+    border-radius: 999px !important;
+}
+
+/* Accordion (Student Solutions) */
+.accordion-button {
+    background-color: #0b1120 !important;
+    color: var(--text) !important;
+}
+.accordion-button:not(.collapsed) {
+    box-shadow: inset 0 -1px 0 #111827;
+}
+.accordion-body {
+    background-color: #020617 !important;
+    color: var(--text);
+}
+
+/* =========================================================
+   GRADING CARD STYLING
+========================================================= */
+
+.grading-wrapper {
+    max-width: 1100px;
+    margin-inline: auto;
+    margin-top: 10px;
+}
+.grading-row-card {
+    background-color: var(--card-soft);
+    border-radius: 18px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.95);
+    padding: 14px 16px;
+}
+.grading-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    background-color: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+/* Grading inputs */
+.grading-form .grade-input {
+    min-width: 120px;
+    background-color: #020617 !important;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    color: var(--text) !important;
+}
+.grading-form .grade-input::placeholder {
+    color: var(--text-soft) !important;
+}
+
+/* Pending count badge */
+.uploaded-count {
+    background-color: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    font-weight: 600;
+}
+
+/* =========================================================
+   IMAGE VIEWER (view_submission)
+========================================================= */
+
+.img-viewer {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 18px;
+    border: 2px solid rgba(59,130,246,0.7);
+    background-color: #000000;
+    box-shadow: 0 20px 55px rgba(0,0,0,1);
+}
+
+/* =========================================================
+   PROFILE (student_profile)
+========================================================= */
+
+.profile-box {
+    max-width: 520px;
+    margin-inline: auto;
+}
+.avatar-preview {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    overflow: hidden;
+    background-color: #020617;
+}
+
+/* =========================================================
+   FORMS & ALERTS
+========================================================= */
+
+.form-control,
+.form-select {
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+    background-color: #020617;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.12rem rgba(59,130,246,0.7);
+    background-color: #020617;
+}
+.form-control::placeholder {
+    color: var(--text-soft);
+}
+
+.alert {
+    border-radius: 12px;
+    border: 1px solid var(--border-soft);
+    background-color: #020617;
+    color: var(--text);
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.btn-primary,
+.btn-accent {
+    background-color: var(--accent) !important;
+    color: #ffffff !important;
+    border-radius: 999px;
+    border: none;
+    font-weight: 600;
+    padding: 7px 16px;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.1s;
+}
+.btn-primary:hover,
+.btn-accent:hover {
+    background-color: var(--accent-strong) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(59,130,246,0.7);
+}
+
+.btn-outline-accent {
+    border-radius: 999px;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+    padding: 6px 14px;
+    background-color: transparent;
+    transition: background 0.2s, color 0.2s, transform 0.1s;
+}
+.btn-outline-accent:hover {
+    background-color: var(--accent);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    border-radius: 999px;
+    font-weight: 600;
+}
+.btn-outline-danger,
+.btn-danger {
+    border-radius: 999px;
+}
+
+
+/* Make upload inputs readable on dark background */
+.upload-input {
+    background-color: #020617 !important;
+    color: #e5e7eb !important;
+    border: 1px solid #1f2937 !important;
+}
+
+.upload-input::placeholder {
+    color: #64748b !important;
+}
+
+textarea.upload-input {
+    min-height: 90px;
+    resize: vertical;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 768px) {
+    .summary-card,
+    .stat-card { padding: 14px 14px 12px; }
+    .summary-value,
+    .stat-value { font-size: 1.6rem; }
+    .login-card { padding-inline: 18px; }
+}
+
+
+/* ===== HARD OVERRIDE FOR BOOTSTRAP TABLE BACKGROUND ===== */
+
+/* Make every table cell dark instead of white */
+.table > :not(caption) > * > * {
+    background-color: #020617 !important;   /* deep dark */
+    color: var(--text) !important;
+    border-color: #111827 !important;
+}
+
+/* Specifically tighten the Uploaded Papers table */
+.upload-table thead,
+.upload-table thead tr,
+.upload-table thead th {
+    background-color: #020617 !important;
+    color: var(--text) !important;
+}
+
+.upload-table tbody tr {
+    background-color: #020617 !important;
+}
+
+.upload-table tbody tr:hover {
+    background-color: #020617 !important;  /* keep same, no white hover */
+}
+
+
+.summary-card.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 24px 60px rgba(0,0,0,1);
+    border-color: var(--accent-soft);
+}

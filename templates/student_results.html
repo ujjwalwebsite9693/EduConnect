@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('student_dashboard') }}"><b>Dashboard</b></a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('student_results') }}"><b>Results</b></a></li>
+<li class="nav-item"><a class="nav-link" href="{{ url_for('student_profile') }}"><b>Profile</b></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="fade">
+
+    <h3 class="fw-bold mb-4">My Results</h3>
+
+    <div class="glass-card">
+        {% if rows %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle small">
+
+                <thead>
+                    <tr>
+                        <th>Paper</th>
+                        <th>Submitted On</th>
+                        <th>Marks</th>
+                        <th>Status</th>
+                        <th>Report</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td>{{ r.paper_title }}</td>
+                        <td>{{ r.submitted_at }}</td>
+
+                        <td>
+                            {% if r.obtained_marks %}
+                                {{ r.obtained_marks }}
+                            {% else %}
+                                <span class="text-muted">Pending</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if r.result_status %}
+                                <span class="badge {% if r.result_status=='PASS' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ r.result_status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if r.obtained_marks %}
+                            <a class="btn btn-outline-accent btn-sm rounded-pill"
+                               href="{{ url_for('download_report', group_id=r.submission_group) }}">
+                               Download
+                            </a>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Not Ready</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">No results available yet.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

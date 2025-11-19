@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block nav_links %}
+<li class="nav-item">
+  <a class="nav-link active" href="#"
+     data-tab-target="#dashboard"><b>Dashboard</b></a>
+</li>
+<li class="nav-item">
+  <a class="nav-link" href="#"
+     data-tab-target="#papers"><b>Sample Papers</b></a>
+</li>
+<li class="nav-item">
+  <a class="nav-link" href="#"
+     data-tab-target="#upload"><b>Upload Solution</b></a>
+</li>
+<li class="nav-item">
+  <a class="nav-link" href="{{ url_for('student_results') }}"><b>Results</b></a>
+</li>
+<li class="nav-item">
+  <a class="nav-link" href="{{ url_for('student_profile') }}"><b>Profile</b></a>
+</li>
+{% endblock %}
+
+
+{% block content %}
+<div class="tab-content mt-3 fade">
+
+<!-- =========================================================
+     MAIN DASHBOARD TAB
+========================================================= -->
+<div class="tab-pane fade show active" id="dashboard">
+
+    <div class="student-dashboard-title mb-3">
+        <h3 class="fw-bold mb-0">Welcome, {{ user.name }}</h3>
+        <small>Here’s a quick look at your performance</small>
+    </div>
+
+    <div class="row g-3">
+
+        <!-- Total Papers -->
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label">Total Papers</div>
+                <div class="stat-value">{{ papers|length }}</div>
+            </div>
+        </div>
+
+        <!-- Total Solved -->
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label">Solved</div>
+                <div class="stat-value">{{ solutions|length }}</div>
+            </div>
+        </div>
+
+        <!-- Unsolved -->
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-label">Unsolved</div>
+                <div class="stat-value">
+                    {{ papers|length - solutions|length }}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <hr class="my-4">
+
+    <h4 class="fw-bold mb-3">Recent Results</h4>
+
+<div class="glass-card recent-results-card">
+
+        {% if solutions %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle small">
+
+                <thead>
+                    <tr>
+                        <th>Paper</th>
+                        <th>Submitted</th>
+                        <th>Marks</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for s in solutions[:5] %}
+                    {% set paper_name = papers | selectattr('id','equalto',s.paper_id) | list | first %}
+                    <tr>
+                        <td>{{ paper_name.title }}</td>
+                        <td>{{ s.submitted_at }}</td>
+                        <td>{{ s.obtained_marks if s.obtained_marks else 'Not graded' }}</td>
+                        <td>
+                            {% if s.result_status %}
+                                <span class="badge {% if s.result_status=='PASS' %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ s.result_status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">Pending</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">No submissions yet.</div>
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     SAMPLE PAPERS TAB
+========================================================= -->
+<div class="tab-pane fade" id="papers">
+
+    <h3 class="fw-bold mb-3">Available Sample Papers</h3>
+
+    <div class="row g-3">
+
+        {% for p in papers %}
+        <div class="col-lg-4 col-md-6">
+            <div class="student-card">
+
+                <h5 class="fw-bold">{{ p.title }}</h5>
+                <p class="text-muted small mb-1">Uploaded on {{ p.uploaded_at }}</p>
+
+                <a href="{{ url_for('download_paper', filename=p.filename) }}"
+                   class="btn btn-accent w-100 mt-2">
+                    Download Paper
+                </a>
+
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     UPLOAD SOLUTION TAB
+========================================================= -->
+<div class="tab-pane fade" id="upload" role="tabpanel" aria-labelledby="upload-tab">
+  <div class="upload-solution-card mx-auto" style="max-width: 900px;">
+
+    <h4 class="mb-3 fw-semibold">Submit Solution</h4>
+    <p class="text-muted small mb-4">
+      Select a sample paper you haven't submitted yet and upload your solution images
+      (<b>JPG/PNG</b>). Each paper can be submitted <b>only once</b>.
+    </p>
+
+    {% if has_papers_left %}
+
+      <form method="POST"
+            action="{{ url_for('upload_solution') }}"
+            enctype="multipart/form-data">
+
+        <!-- Select paper -->
+        <div class="mb-3">
+          <label class="form-label small text-muted">Select Paper</label>
+          <select name="paper_id" class="form-select upload-input" required>
+            <option value="">-- Choose Paper --</option>
+            {% for p in available_papers %}
+              <option value="{{ p.id }}">{{ p.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Upload images -->
+        <div class="mb-4">
+          <label class="form-label small text-muted">Upload Solution Images (JPG/PNG)</label>
+          <div class="upload-box">
+            <i class="bi bi-image upload-icon"></i>
+            <p class="upload-title">Click to select files</p>
+            <p class="upload-sub">You can select multiple pages (JPG/PNG)</p>
+            <input type="file" name="files" accept=".jpg,.jpeg,.png" multiple required>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button class="btn btn-success w-100 rounded-pill mt-1">
+          Upload Solution
+        </button>
+      </form>
+
+    {% else %}
+
+      <!-- No papers left to submit -->
+      <div class="text-center py-4">
+        <i class="bi bi-check-circle-fill" style="font-size: 2.5rem; color: #22c55e;"></i>
+        <h5 class="mt-3 mb-1">All Papers Submitted</h5>
+        <p class="text-muted small mb-0">
+          You have already submitted solutions for all available sample papers.
+          When your teacher uploads new papers, they will appear here.
+        </p>
+      </div>
+
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

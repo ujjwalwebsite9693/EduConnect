@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block nav_links %}
+<li class="nav-item"><a class="nav-link" href="{{ url_for('teacher_dashboard') }}"><b>Dashboard</b></a></li>
+<li class="nav-item"><a class="nav-link active" href="{{ url_for('teacher_analytics') }}"><b>Analytics</b></a></li>
+{% endblock %}
+
+{% block content %}
+<div class="fade">
+
+    <h3 class="fw-bold mb-4">Analytics Overview</h3>
+
+    <!-- ======================= STUDENT AVG ======================= -->
+    <div class="glass-card mb-4">
+        <h5 class="fw-bold mb-3">Average Marks by Students</h5>
+
+        {% if avg_students %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle small">
+
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Average Marks</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for s in avg_students %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td>@{{ s.username }}</td>
+                        <td><b>{{ s.avg_marks|round(2) }}</b></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">No graded papers yet.</div>
+        {% endif %}
+    </div>
+
+    <!-- ======================= PAPER AVG ======================= -->
+    <div class="glass-card">
+        <h5 class="fw-bold mb-3">Average Marks by Papers</h5>
+
+        {% if avg_papers %}
+        <div class="table-responsive">
+            <table class="table table-striped align-middle small">
+
+                <thead>
+                    <tr>
+                        <th>Paper Title</th>
+                        <th>Average Marks</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for p in avg_papers %}
+                    <tr>
+                        <td>{{ p.title }}</td>
+                        <td><b>{{ p.avg_marks|round(2) }}</b></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">No paper analytics available.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
