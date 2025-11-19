@@ -163,6 +163,16 @@ def init_db():
     db.commit()
 
 
+# =======================================================
+# 🚀 AUTO-RUN DATABASE INITIALIZATION (RENDER FIX)
+# =======================================================
+
+# Render does NOT execute `if __name__ == "__main__"` during deployment,
+# so we MUST force DB creation at import time.
+with app.app_context():
+    init_db()
+
+
 # 🔹 This will run ONCE on Render when the first request comes in
 @app.before_first_request
 def ensure_database():
