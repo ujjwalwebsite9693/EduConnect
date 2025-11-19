@@ -155,10 +155,21 @@ def init_db():
     count = db.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
     if count == 0:
         for u, p, r, n in DEFAULT_USERS:
-            db.execute("INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)",
-                       (u, p, r, n))
+            db.execute(
+                "INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)",
+                (u, p, r, n)
+            )
 
     db.commit()
+
+
+# 🔹 This will run ONCE on Render when the first request comes in
+@app.before_first_request
+def ensure_database():
+    """
+    Ensures tables + default users exist when running under gunicorn/Render.
+    """
+    init_db()
 
 
 # ============================================================
