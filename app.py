@@ -173,11 +173,6 @@ with app.app_context():
     init_db()
 
 
-# now your routes start below
-@app.route("/")
-def home():
-    return redirect(url_for("login"))
-
 # ============================================================
 #                         AUTH HELPERS
 # ============================================================
