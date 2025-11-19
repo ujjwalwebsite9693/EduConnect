@@ -613,3 +613,26 @@ textarea.upload-input {
     box-shadow: 0 24px 60px rgba(0,0,0,1);
     border-color: var(--accent-soft);
 }
+
+/* ===== LOGIN FORM INPUTS – DARK THEME BUT CLEAR TEXT ===== */
+.auth-card .form-control,
+.auth-card .form-select {
+    background-color: #020617;        /* dark slate */
+    border: 1px solid #4b5563;        /* gray border */
+    color: #e5e7eb;                   /* light text */
+    padding: 0.6rem 0.9rem;
+    font-size: 0.95rem;
+}
+
+.auth-card .form-control:focus,
+.auth-card .form-select:focus {
+    background-color: #020617;
+    border-color: #3b82f6;           /* blue focus border */
+    color: #f9fafb;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.6);
+}
+
+.auth-card .form-control::placeholder {
+    color: #9ca3af;                  /* visible but soft */
+    opacity: 1;
+}
