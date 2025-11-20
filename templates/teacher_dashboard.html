@@ -368,10 +368,11 @@
                 <td>{{ p.title }}</td>
                 <td>{{ p.uploaded_at }}</td>
                 <td>
-                  <a href="{{ url_for('download_paper', filename=p.filename) }}"
-                     class="btn btn-outline-accent btn-sm">
-                    <i class="bi bi-download me-1"></i>Download
-                  </a>
+                  <a href="{{ p.filename }}" target="_blank"
+   class="btn btn-sm btn-outline-primary rounded-pill">
+  Download
+</a>
+
                 </td>
                 <td>
                   <form method="POST" action="{{ url_for('rename_paper') }}" class="d-flex gap-2">
