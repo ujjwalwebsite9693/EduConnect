@@ -423,7 +423,7 @@ def teacher_dashboard():
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()  # (optional, not stored)
+    description = request.form.get("description", "").strip()  # optional
     file = request.files.get("file")
 
     if not title:
@@ -439,38 +439,40 @@ def upload_paper():
         flash("Only PDF files are allowed.", "danger")
         return redirect(url_for("teacher_dashboard"))
 
-    original_name = secure_filename(file.filename)
-
-    # 🔹 If Cloudinary is configured → upload as RAW (keeps it as PDF)
-    if USE_CLOUDINARY:
-        result = uploader.upload(
-            file,
-            resource_type="raw",           # <<< very important for pdf
-            public_id=f"papers/{uuid.uuid4().hex}",
-            use_filename=True,
-            unique_filename=True,
-            overwrite=True
-        )
-        stored_value = result["secure_url"]   # this goes in DB
-    else:
-        # Local fallback (your old behaviour)
-        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{original_name}"
-        path = os.path.join(PAPERS_FOLDER, filename)
-        file.save(path)
-        stored_value = filename              # just the filename
-
     db = get_db()
+
+    # ✅ If Cloudinary is configured, upload there
+    if USE_CLOUDINARY:
+        try:
+            upload_result = uploader.upload(
+                file,
+                resource_type="auto",      # <-- IMPORTANT: no "raw" here
+                folder="papers",
+                use_filename=True,
+                unique_filename=True,
+                overwrite=False
+            )
+            filename = upload_result.get("secure_url")  # full https://... URL
+        except Exception as e:
+            print("Cloudinary upload error:", e)
+            flash("Error uploading to cloud storage.", "danger")
+            return redirect(url_for("teacher_dashboard"))
+    else:
+        # ✅ Local disk fallback (for running on your PC)
+        safe_name = secure_filename(file.filename)
+        filename_only = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
+        full_path = os.path.join(PAPERS_FOLDER, filename_only)
+        file.save(full_path)
+        filename = filename_only  # store just the file name in DB
+
     db.execute(
         "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
-        (title, stored_value, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
+        (title, filename, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
     )
     db.commit()
 
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
-
-
-
 
 
 # ============================================================
