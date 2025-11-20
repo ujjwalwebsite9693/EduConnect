@@ -369,18 +369,12 @@
                 <td>{{ p.uploaded_at }}</td>
                 <td>
                  <td>
-  {% if p.filename.startswith('http') %}
-  <!-- Cloudinary-hosted file -->
-  <a href="{{ p.filename }}" class="btn btn-sm btn-outline-info" target="_blank">
-    Download
-  </a>
-{% else %}
-  <!-- Local file (for local dev) -->
-  <a href="{{ url_for('download_paper', filename=p.filename) }}"
-     class="btn btn-sm btn-outline-info">
-    Download
-  </a>
-{% endif %}
+  <a href="{{ url_for('download_paper', paper_id=p.id) }}"
+   class="btn btn-sm btn-outline-primary rounded-pill"
+   target="_blank">
+  Download
+</a>
+
 
 </td>
 
