@@ -399,7 +399,7 @@ def teacher_dashboard():
         "teacher_dashboard.html",
         user=user,
         papers=papers,
-        solutions=grouped_submissions,
+        solutions=ungraded_submissions,
         total_papers=total_papers,
         total_solutions=total_solutions,
         avg_marks=avg_marks,
