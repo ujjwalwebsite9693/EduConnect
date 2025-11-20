@@ -419,7 +419,7 @@ def teacher_dashboard():
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()  # (optional, not stored)
+    description = request.form.get("description", "").strip()  # optional, not stored now
     file = request.files.get("file")
 
     if not title:
@@ -435,28 +435,26 @@ def upload_paper():
         flash("Only PDF files are allowed.", "danger")
         return redirect(url_for("teacher_dashboard"))
 
-    db = get_db()
-
-    # =================== CLOUDINARY MODE ===================
-    if USE_CLOUDINARY:
-        # Upload as RAW file so PDFs are accepted
-        result = uploader.upload(
+    # 🔹 Upload directly to Cloudinary as RAW file
+    try:
+        upload_result = cloudinary.uploader.upload(
             file,
-            resource_type="raw",
-            folder="educonnect/papers"
+            resource_type="raw",      # for pdf/doc/zip etc
+            folder="papers"           # optional folder in Cloudinary
         )
-        # Store Cloudinary public_id in "filename" column
-        stored_name = result["public_id"]
-    else:
-        # =================== LOCAL FILE MODE ===================
-        filename = secure_filename(file.filename)
-        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-        file.save(os.path.join(PAPERS_FOLDER, filename))
-        stored_name = filename
+    except Exception as e:
+        print("Cloudinary upload error:", e)
+        flash("Failed to upload paper to Cloudinary.", "danger")
+        return redirect(url_for("teacher_dashboard"))
 
+    # This is the FULL working URL like:
+    # https://res.cloudinary.com/.../raw/upload/v1732098765/papers/paper_xxx.pdf
+    file_url = upload_result["secure_url"]
+
+    db = get_db()
     db.execute(
         "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
-        (title, stored_name, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
+        (title, file_url, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
     )
     db.commit()
 
