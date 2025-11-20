@@ -1051,14 +1051,20 @@ def download_report(group_id):
 #                   DOWNLOAD PAPER (PDF)
 # ============================================================
 
-@app.route("/download_paper/<filename>")
+@app.route("/download_paper/<path:filename>")
 def download_paper(filename):
-    # If using Cloudinary, filename is a public_id of a RAW resource
-    if USE_CLOUDINARY:
-        url, _ = utils.cloudinary_url(filename, resource_type="raw")
-        return redirect(url)
+    """
+    Supports BOTH:
+    - local files: 'somefile.pdf'  -> served from PAPERS_FOLDER
+    - Cloudinary URLs: 'https://res.cloudinary.com/...'
+      -> redirected to Cloudinary
+    """
 
-    # Local fallback
+    # If it's a full URL (Cloudinary), just redirect
+    if filename.startswith("http://") or filename.startswith("https://"):
+        return redirect(filename)
+
+    # Otherwise treat it as a local file name
     return send_from_directory(PAPERS_FOLDER, filename)
 
 
