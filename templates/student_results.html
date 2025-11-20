@@ -52,10 +52,11 @@
 
                         <td>
                             {% if r.obtained_marks %}
-                            <a class="btn btn-outline-accent btn-sm rounded-pill"
-                               href="{{ url_for('download_report', group_id=r.submission_group) }}">
-                               Download
-                            </a>
+                            <a href="{{ url_for('download_report', group_id=row.submission_group) }}"
+   class="btn btn-sm btn-outline-success rounded-pill">
+  <i class="bi bi-filetype-pdf me-1"></i> Download Report
+</a>
+
                             {% else %}
                             <span class="badge bg-warning text-dark">Not Ready</span>
                             {% endif %}
