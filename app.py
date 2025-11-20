@@ -441,19 +441,22 @@ def upload_paper():
     db = get_db()
 
     if USE_CLOUDINARY:
-        # 🔹 Upload as RAW file (NOT image) so PDF is treated as file
+        # ✅ Force a public_id that ends with .pdf so URL also ends with .pdf
+        random_id = uuid.uuid4().hex
+        public_id = f"papers/{random_id}.pdf"
+
         upload_result = uploader.upload(
             file,
-            folder="papers",
-            resource_type="raw",     # <---- IMPORTANT
-            use_filename=True,
-            unique_filename=True
+            resource_type="raw",   # store as raw file (good for PDFs)
+            public_id=public_id,   # enforce .pdf in public_id
+            overwrite=True
         )
-        # Store the *secure* URL in DB
+
+        # This URL will now end with .pdf
         file_url = upload_result["secure_url"]
         filename_to_store = file_url
     else:
-        # Local fallback (for running on your laptop)
+        # Local fallback (when running on your laptop)
         filename = secure_filename(file.filename)
         filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
         file.save(os.path.join(PAPERS_FOLDER, filename))
@@ -467,6 +470,7 @@ def upload_paper():
 
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
+
 
 
 
