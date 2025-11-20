@@ -23,6 +23,9 @@ from reportlab.lib import colors
 import cloudinary
 from cloudinary import uploader, utils
 
+from urllib.parse import unquote
+
+
 
 # ============================================================
 #                     APP INITIALIZATION
@@ -1064,12 +1067,21 @@ def download_report(group_id):
 
 @app.route("/download_paper/<path:filename>")
 def download_paper(filename):
-    # If this is actually a Cloudinary URL stored in DB, just redirect
-    if filename.startswith("http://") or filename.startswith("https://"):
-        return redirect(filename)
+    # Ensure any % encoding is decoded (e.g. https%3A%2F%2F...)
+    filename = unquote(filename)
 
-    # Otherwise, treat as local file in PAPERS_FOLDER
-    return send_from_directory(PAPERS_FOLDER, filename)
+    # 🔹 If it's a Cloudinary URL, just redirect to it
+    if filename.startswith("http://") or filename.startswith("https://"):
+        file_url = filename
+
+        # If Cloudinary URL has no .pdf at the end, force PDF extension
+        if not file_url.lower().endswith(".pdf"):
+            file_url = file_url + ".pdf"
+
+        return redirect(file_url)
+
+    # 🔹 Otherwise, treat as local file in PAPERS_FOLDER (for local dev)
+    return send_from_directory(PAPERS_FOLDER, filename, as_attachment=True)
 
 
 # ============================================================
