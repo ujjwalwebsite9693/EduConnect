@@ -422,7 +422,7 @@ def teacher_dashboard():
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()
+    description = request.form.get("description", "").strip()  # optional
     file = request.files.get("file")
 
     if not title:
@@ -441,26 +441,25 @@ def upload_paper():
     db = get_db()
 
     if USE_CLOUDINARY:
-        # ✅ Force a public_id that ends with .pdf so URL also ends with .pdf
-        random_id = uuid.uuid4().hex
-        public_id = f"papers/{random_id}.pdf"
-
+        # ✅ Upload PDF to Cloudinary as RAW, PUBLIC, with proper .pdf filename
         upload_result = uploader.upload(
             file,
-            resource_type="raw",   # store as raw file (good for PDFs)
-            public_id=public_id,   # enforce .pdf in public_id
-            overwrite=True
+            resource_type="raw",    # handle as raw file (PDF)
+            folder="papers",        # folder in Cloudinary
+            access_mode="public",   # make it publicly accessible
+            use_filename=True,      # base name from original file
+            unique_filename=True    # avoid collisions
         )
 
-        # This URL will now end with .pdf
-        file_url = upload_result["secure_url"]
-        filename_to_store = file_url
+        # This URL should end with .pdf and be directly downloadable
+        filename_to_store = upload_result["secure_url"]
     else:
         # Local fallback (when running on your laptop)
-        filename = secure_filename(file.filename)
-        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-        file.save(os.path.join(PAPERS_FOLDER, filename))
-        filename_to_store = filename
+        safe_name = secure_filename(file.filename)
+        safe_name = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
+        full_path = os.path.join(PAPERS_FOLDER, safe_name)
+        file.save(full_path)
+        filename_to_store = safe_name
 
     db.execute(
         "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
@@ -470,6 +469,7 @@ def upload_paper():
 
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
+
 
 
 
