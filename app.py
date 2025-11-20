@@ -415,11 +415,15 @@ def teacher_dashboard():
 #               TEACHER — UPLOAD SAMPLE PAPER
 # ============================================================
 
+# ============================================================
+#               TEACHER — UPLOAD SAMPLE PAPER (CLOUDINARY)
+# ============================================================
+
 @app.route("/upload_paper", methods=["POST"])
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()  # optional, not stored now
+    description = request.form.get("description", "").strip()
     file = request.files.get("file")
 
     if not title:
@@ -435,31 +439,43 @@ def upload_paper():
         flash("Only PDF files are allowed.", "danger")
         return redirect(url_for("teacher_dashboard"))
 
-    # 🔹 Upload directly to Cloudinary as RAW file
-    try:
-        upload_result = cloudinary.uploader.upload(
+    # Generate unique name for Cloudinary
+    public_id = f"papers/paper_{uuid.uuid4().hex}"
+
+    if USE_CLOUDINARY:
+        # Upload file to Cloudinary as RAW PDF
+        result = uploader.upload(
             file,
-            resource_type="raw",      # for pdf/doc/zip etc
-            folder="papers"           # optional folder in Cloudinary
+            resource_type="raw",       # REQUIRED for PDF
+            public_id=public_id,
+            overwrite=True
         )
-    except Exception as e:
-        print("Cloudinary upload error:", e)
-        flash("Failed to upload paper to Cloudinary.", "danger")
-        return redirect(url_for("teacher_dashboard"))
+        pdf_url = result["secure_url"]
 
-    # This is the FULL working URL like:
-    # https://res.cloudinary.com/.../raw/upload/v1732098765/papers/paper_xxx.pdf
-    file_url = upload_result["secure_url"]
+    else:
+        # LOCAL fallback (if Cloudinary is disabled)
+        filename = secure_filename(file.filename)
+        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+        file.save(os.path.join(PAPERS_FOLDER, filename))
+        pdf_url = filename
 
+    # Save record in DB
     db = get_db()
-    db.execute(
-        "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
-        (title, file_url, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
-    )
-    db.commit()
+    db.execute("""
+        INSERT INTO papers (title, filename, uploaded_by, uploaded_at)
+        VALUES (?, ?, ?, ?)
+    """, (
+        title,
+        pdf_url,   # Save Cloudinary URL directly
+        session["username"],
+        datetime.now().strftime("%Y-%m-%d %H:%M")
+    ))
 
+    db.commit()
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
+
+
 
 
 # ============================================================
@@ -532,6 +548,7 @@ def delete_paper():
 
 # ============================================================
 #             STUDENT — UPLOAD SOLUTION (MULTIPLE FILES)
+#        (LOCAL + CLOUDINARY SUPPORT FOR IMAGE PAGES)
 # ============================================================
 
 @app.route("/student/upload-solution", methods=["POST"])
@@ -577,20 +594,22 @@ def upload_solution():
             flash("Only JPG/PNG files are allowed.", "warning")
             return redirect(url_for("student_dashboard"))
 
-        # =================== CLOUDINARY MODE ===================
+        safe = secure_filename(f.filename)
+        fname = f"sol_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe}"
+
+        # 🔹 If Cloudinary is enabled, upload there
         if USE_CLOUDINARY:
             result = uploader.upload(
                 f,
-                folder="educonnect/solutions",
-                resource_type="image"
+                resource_type="image",
+                public_id=f"solutions/{uuid.uuid4().hex}",
+                overwrite=True
             )
-            stored_name = result["public_id"]
+            file_ref = result["secure_url"]      # store full URL
         else:
-            # =================== LOCAL MODE ===================
-            safe = secure_filename(f.filename)
-            fname = f"sol_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe}"
+            # local fallback
             f.save(os.path.join(SOLUTIONS_FOLDER, fname))
-            stored_name = fname
+            file_ref = fname                     # store filename
 
         # Every page goes into the same submission_group
         db.execute(
@@ -599,7 +618,7 @@ def upload_solution():
               (paper_id, student_username, filename, submitted_at, submission_group)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (paper_id, session["username"], stored_name, now_str, group_id),
+            (paper_id, session["username"], file_ref, now_str, group_id),
         )
 
     db.commit()
@@ -665,15 +684,15 @@ def view_submission(group_id):
 #                 DIRECT SOLUTION FILE VIEWER
 # ============================================================
 
-@app.route("/view_solution/<filename>")
+@app.route("/view_solution/<path:filename>")
 def view_solution(filename):
-    # If Cloudinary: redirect to hosted image URL
-    if USE_CLOUDINARY:
-        url, _ = utils.cloudinary_url(filename)
-        return redirect(url)
+    # If it's a Cloudinary URL, just redirect
+    if filename.startswith("http"):
+        return redirect(filename)
 
-    # Otherwise serve from local disk
+    # Otherwise serve from local folder
     return send_from_directory(SOLUTIONS_FOLDER, filename)
+
 
 
 # ============================================================
@@ -1053,18 +1072,11 @@ def download_report(group_id):
 
 @app.route("/download_paper/<path:filename>")
 def download_paper(filename):
-    """
-    Supports BOTH:
-    - local files: 'somefile.pdf'  -> served from PAPERS_FOLDER
-    - Cloudinary URLs: 'https://res.cloudinary.com/...'
-      -> redirected to Cloudinary
-    """
-
-    # If it's a full URL (Cloudinary), just redirect
-    if filename.startswith("http://") or filename.startswith("https://"):
+    # If the saved value is a Cloudinary URL → redirect
+    if filename.startswith("http"):
         return redirect(filename)
 
-    # Otherwise treat it as a local file name
+    # Local fallback
     return send_from_directory(PAPERS_FOLDER, filename)
 
 
