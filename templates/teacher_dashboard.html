@@ -368,10 +368,14 @@
                 <td>{{ p.title }}</td>
                 <td>{{ p.uploaded_at }}</td>
                 <td>
-                  <a href="{{ p.filename }}" target="_blank"
-   class="btn btn-sm btn-outline-primary rounded-pill">
-  Download
-</a>
+                 <td>
+  <a href="{{ url_for('download_paper', filename=p.filename) }}"
+     target="_blank"
+     class="btn btn-sm btn-outline-primary rounded-pill">
+    Download
+  </a>
+</td>
+
 
                 </td>
                 <td>
