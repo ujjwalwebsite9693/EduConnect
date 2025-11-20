@@ -441,20 +441,21 @@ def upload_paper():
     db = get_db()
 
     if USE_CLOUDINARY:
-        # ✅ Store only the public_id, not the full URL
-        # We don't care about extension here, we will set .pdf at download time.
-        public_id = f"papers/{uuid.uuid4().hex}"
-
+        # Upload as "image" so Cloudinary treats PDF nicely and gives a .pdf URL
+        # format="pdf" forces the URL to end with .pdf
         upload_result = uploader.upload(
             file,
-            resource_type="raw",   # store PDF as raw file
-            public_id=public_id,
-            overwrite=True
+            folder="papers",
+            resource_type="image",
+            format="pdf",
+            use_filename=False,
+            unique_filename=True
         )
 
-        filename_to_store = upload_result["public_id"]  # e.g. "papers/abc123..."
+        # This secure_url will look like .../image/upload/.../something.pdf
+        filename_to_store = upload_result["secure_url"]
     else:
-        # Local fallback
+        # Local fallback (on your laptop)
         safe_name = secure_filename(file.filename)  # keeps .pdf
         safe_name = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
         full_path = os.path.join(PAPERS_FOLDER, safe_name)
@@ -1069,33 +1070,28 @@ def download_report(group_id):
 @app.route("/download_paper/<int:paper_id>")
 def download_paper(paper_id):
     db = get_db()
-    paper = db.execute("SELECT * FROM papers WHERE id = ?", (paper_id,)).fetchone()
+    paper = db.execute(
+        "SELECT title, filename FROM papers WHERE id = ?",
+        (paper_id,)
+    ).fetchone()
+
     if not paper:
         abort(404)
 
+    stored_value = paper["filename"]
+
     if USE_CLOUDINARY:
-        # filename column holds the Cloudinary public_id, e.g. "papers/abc123"
-        public_id = paper["filename"]
+        # stored_value is already a full https://... .pdf URL
+        return redirect(stored_value)
 
-        # Build a URL that forces a download with a proper .pdf filename
-        pdf_url, _ = utils.cloudinary_url(
-            public_id,
-            resource_type="raw",
-            secure=True,
-            flags="attachment",                 # download, not inline
-            filename=f"{paper['title']}.pdf"    # final file name for user
-        )
+    # Local mode: send from disk
+    return send_from_directory(
+        PAPERS_FOLDER,
+        stored_value,
+        as_attachment=True,
+        download_name=f"{paper['title']}.pdf"
+    )
 
-        # Just redirect the browser to Cloudinary
-        return redirect(pdf_url)
-    else:
-        # Local storage mode
-        return send_from_directory(
-            PAPERS_FOLDER,
-            paper["filename"],
-            as_attachment=True,
-            download_name=f"{paper['title']}.pdf"
-        )
 
 
 # ============================================================
