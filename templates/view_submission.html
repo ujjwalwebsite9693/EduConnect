@@ -1,89 +1,57 @@
 {% extends "base.html" %}
 
-{% block body_class %}bg-main fade{% endblock %}
-{% block main_container_class %}py-4{% endblock %}
-
-{% block nav_links %}
-<li class="nav-item">
-  <a class="nav-link active" aria-current="page" href="{{ url_for('teacher_dashboard') }}">
-    <i class="bi bi-speedometer2 me-1"></i> Teacher Dashboard
-  </a>
-</li>
-<li class="nav-item">
-  <a class="nav-link" href="{{ url_for('teacher_analytics') }}">
-    <i class="bi bi-graph-up-arrow me-1"></i> Analytics
-  </a>
-</li>
-{% endblock %}
+{% block body_class %}bg-dashboard{% endblock %}
 
 {% block content %}
+<div class="teacher-page-wrapper fade">
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h4 class="text-white mb-1">
-      <i class="bi bi-file-earmark-text me-2"></i>
-      Viewing Submission
-    </h4>
-    <div class="text-muted small">
-      {{ student.name }} ({{ student.username }}) &middot;
-      Paper: {{ paper.title }} &middot;
-      Page {{ page }} of {{ total }}
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h4 class="section-title mb-1">Viewing Submission</h4>
+      <div class="text-muted small">
+        Paper: <b>{{ paper.title if paper else "Unknown" }}</b> •
+        Student: <b>{{ student.name if student else "Unknown" }}</b>
+        ({{ student.username if student else "" }})
+      </div>
     </div>
+
+    <a href="{{ url_for('teacher_dashboard') }}#grading"
+       class="btn btn-outline-light btn-sm rounded-pill">
+      <i class="bi bi-arrow-left"></i> Back to Grading
+    </a>
   </div>
 
-  <a href="{{ url_for('teacher_dashboard') }}#grading" class="btn btn-outline-light btn-sm rounded-pill">
-    <i class="bi bi-arrow-left-circle me-1"></i> Back to Grading
-  </a>
-</div>
+  <div class="card glass-card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="badge rounded-pill bg-soft-primary text-primary">
+        Page {{ page }} of {{ total }}
+      </span>
 
-<div class="card glass-card-dark border-0">
-  <div class="card-body">
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="btn-group" role="group" aria-label="Page navigation">
+      <div class="d-flex gap-2">
         {% if page > 1 %}
-        <a class="btn btn-outline-light btn-sm"
-           href="{{ url_for('view_submission', group_id=group_id, page=page-1) }}">
-          <i class="bi bi-arrow-left-circle me-1"></i> Previous
+        <a href="{{ url_for('view_submission', group_id=group_id, page=page-1) }}"
+           class="btn btn-sm btn-outline-light rounded-pill">
+          <i class="bi bi-arrow-left-circle"></i> Previous
         </a>
-        {% else %}
-        <button class="btn btn-outline-secondary btn-sm" disabled>
-          <i class="bi bi-arrow-left-circle me-1"></i> Previous
-        </button>
         {% endif %}
-
-        <span class="btn btn-outline-secondary btn-sm disabled">
-          Page {{ page }} / {{ total }}
-        </span>
 
         {% if page < total %}
-        <a class="btn btn-outline-light btn-sm"
-           href="{{ url_for('view_submission', group_id=group_id, page=page+1) }}">
-          Next <i class="bi bi-arrow-right-circle ms-1"></i>
+        <a href="{{ url_for('view_submission', group_id=group_id, page=page+1) }}"
+           class="btn btn-sm btn-outline-light rounded-pill">
+          Next <i class="bi bi-arrow-right-circle"></i>
         </a>
-        {% else %}
-        <button class="btn btn-outline-secondary btn-sm" disabled>
-          Next <i class="bi bi-arrow-right-circle ms-1"></i>
-        </button>
         {% endif %}
       </div>
-
-      <a href="{{ url_for('view_solution', filename=current_file) }}"
-         target="_blank"
-         class="btn btn-outline-info btn-sm rounded-pill">
-        <i class="bi bi-box-arrow-up-right me-1"></i> Open Original
-      </a>
     </div>
 
     <div class="text-center">
-      <!-- ✅ ALWAYS GO THROUGH view_solution ROUTE -->
-      <img src="{{ url_for('view_solution', filename=current_file) }}"
+      {# 🔹 IMPORTANT: use the URL directly (works for Cloudinary + local) #}
+      <img src="{{ current_file }}"
            alt="Solution page"
            class="img-fluid rounded shadow-lg"
            style="max-height: 80vh; object-fit: contain;">
     </div>
-
   </div>
-</div>
 
+</div>
 {% endblock %}
