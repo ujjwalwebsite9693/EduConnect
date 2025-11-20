@@ -412,18 +412,15 @@ def teacher_dashboard():
 
 
 # ============================================================
-#               TEACHER — UPLOAD SAMPLE PAPER
-# ============================================================
-
-# ============================================================
-#               TEACHER — UPLOAD SAMPLE PAPER (CLOUDINARY)
+#               TEACHER — UPLOAD SAMPLE PAPER (PDF)
+#            (Cloudinary RAW + local fallback)
 # ============================================================
 
 @app.route("/upload_paper", methods=["POST"])
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()
+    description = request.form.get("description", "").strip()  # (optional, not stored)
     file = request.files.get("file")
 
     if not title:
@@ -439,41 +436,36 @@ def upload_paper():
         flash("Only PDF files are allowed.", "danger")
         return redirect(url_for("teacher_dashboard"))
 
-    # Generate unique name for Cloudinary
-    public_id = f"papers/paper_{uuid.uuid4().hex}"
+    original_name = secure_filename(file.filename)
 
+    # 🔹 If Cloudinary is configured → upload as RAW (keeps it as PDF)
     if USE_CLOUDINARY:
-        # Upload file to Cloudinary as RAW PDF
         result = uploader.upload(
             file,
-            resource_type="raw",       # REQUIRED for PDF
-            public_id=public_id,
+            resource_type="raw",           # <<< very important for pdf
+            public_id=f"papers/{uuid.uuid4().hex}",
+            use_filename=True,
+            unique_filename=True,
             overwrite=True
         )
-        pdf_url = result["secure_url"]
-
+        stored_value = result["secure_url"]   # this goes in DB
     else:
-        # LOCAL fallback (if Cloudinary is disabled)
-        filename = secure_filename(file.filename)
-        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-        file.save(os.path.join(PAPERS_FOLDER, filename))
-        pdf_url = filename
+        # Local fallback (your old behaviour)
+        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{original_name}"
+        path = os.path.join(PAPERS_FOLDER, filename)
+        file.save(path)
+        stored_value = filename              # just the filename
 
-    # Save record in DB
     db = get_db()
-    db.execute("""
-        INSERT INTO papers (title, filename, uploaded_by, uploaded_at)
-        VALUES (?, ?, ?, ?)
-    """, (
-        title,
-        pdf_url,   # Save Cloudinary URL directly
-        session["username"],
-        datetime.now().strftime("%Y-%m-%d %H:%M")
-    ))
-
+    db.execute(
+        "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
+        (title, stored_value, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
+    )
     db.commit()
+
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
+
 
 
 
@@ -1072,11 +1064,11 @@ def download_report(group_id):
 
 @app.route("/download_paper/<path:filename>")
 def download_paper(filename):
-    # If the saved value is a Cloudinary URL → redirect
-    if filename.startswith("http"):
+    # If this is actually a Cloudinary URL stored in DB, just redirect
+    if filename.startswith("http://") or filename.startswith("https://"):
         return redirect(filename)
 
-    # Local fallback
+    # Otherwise, treat as local file in PAPERS_FOLDER
     return send_from_directory(PAPERS_FOLDER, filename)
 
 
