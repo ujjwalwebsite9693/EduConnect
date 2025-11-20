@@ -131,9 +131,9 @@
                 <h5 class="fw-bold">{{ p.title }}</h5>
                 <p class="text-muted small mb-1">Uploaded on {{ p.uploaded_at }}</p>
 
-                <a href="{{ url_for('download_paper', filename=p.filename) }}"
-   class="btn btn-sm btn-outline-info rounded-pill">
-  <i class="bi bi-file-earmark-arrow-down me-1"></i> Open Paper
+                <a href="{{ p.filename }}" target="_blank"
+   class="btn btn-sm btn-primary rounded-pill">
+  Download
 </a>
 
 
