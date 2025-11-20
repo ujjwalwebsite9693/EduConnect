@@ -1,6 +1,6 @@
 # ============================================================
 #                   EDUCONNECT - FINAL VERSION
-#                    APP.PY (PART 1 OF 5)
+#                    APP.PY (CLOUDINARY READY)
 # ============================================================
 
 import os
@@ -19,6 +19,10 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 
+# ==== CLOUDINARY IMPORTS ====
+import cloudinary
+from cloudinary import uploader, utils
+
 
 # ============================================================
 #                     APP INITIALIZATION
@@ -28,23 +32,35 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey_educonnect_2025"
 
 # ============================================================
-#               PERSISTENT DISK STORAGE (RENDER)
+#                CLOUDINARY CONFIGURATION
 # ============================================================
 
-# Base directory for all permanent data
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+USE_CLOUDINARY = bool(CLOUDINARY_URL)
+
+if USE_CLOUDINARY:
+    cloudinary.config(cloudinary_url=CLOUDINARY_URL)
+
+
+# ============================================================
+#               PERSISTENT DISK STORAGE (LOCAL DEV)
+# ============================================================
+
+# For Render this is ephemeral, but still useful for:
+# - local development
+# - generated PDF reports
 BASE_DIR = "/opt/render/project/src/data"
 
-# Sub-folders for uploads
+# Sub-folders for uploads (used when Cloudinary is OFF or for reports/avatars)
 UPLOAD_ROOT = os.path.join(BASE_DIR, "uploads")
 PAPERS_FOLDER = os.path.join(UPLOAD_ROOT, "papers")
 SOLUTIONS_FOLDER = os.path.join(UPLOAD_ROOT, "solutions")
 AVATAR_FOLDER = os.path.join(UPLOAD_ROOT, "avatars")
 REPORTS_FOLDER = os.path.join(UPLOAD_ROOT, "reports")
 
-# Database path (also on disk)
+# Database path
 DB_PATH = os.path.join(BASE_DIR, "database.db")
 
-# Ensure folders exist
 for folder in [
     BASE_DIR,
     UPLOAD_ROOT,
@@ -107,7 +123,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS papers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            filename TEXT NOT NULL,
+            filename TEXT NOT NULL,    -- stores local filename OR Cloudinary public_id
             uploaded_by TEXT NOT NULL,
             uploaded_at TEXT NOT NULL
         );
@@ -116,7 +132,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             paper_id INTEGER NOT NULL,
             student_username TEXT NOT NULL,
-            filename TEXT NOT NULL,
+            filename TEXT NOT NULL,    -- stores local filename OR Cloudinary public_id
             submitted_at TEXT NOT NULL,
             marks REAL,
             submission_group TEXT,
@@ -133,7 +149,7 @@ def init_db():
     """)
 
     # AUTO-ADD missing columns (SAFE MIGRATION)
-    cols = {c["name"] for c in db.execute("PRAGMA table_info(solutions)")}
+    cols = {c["name"] for c in db.execute("PRAGMA table_info(solutions)").fetchall()}
 
     needed = {
         "submission_group": "TEXT",
@@ -163,12 +179,7 @@ def init_db():
     db.commit()
 
 
-# =======================================================
-# 🚀 AUTO-RUN DATABASE INITIALIZATION (RENDER FIX)
-# =======================================================
-
-# Render does NOT execute `if __name__ == "__main__"` during deployment,
-# so we MUST force DB creation at import time.
+# 🚀 Important: ensure DB exists even on Render (gunicorn import)
 with app.app_context():
     init_db()
 
@@ -199,6 +210,7 @@ def get_current_user():
     db = get_db()
     return db.execute("SELECT * FROM users WHERE username=?",
                       (session["username"],)).fetchone()
+
 
 # ============================================================
 #                    ROUTES — LOGIN / LOGOUT
@@ -367,8 +379,7 @@ def teacher_dashboard():
             "group_id": g["group_id"],
         })
 
-
-        # ----- EXTRA STATS FOR TOP CARDS -----
+    # ----- EXTRA STATS FOR TOP CARDS -----
     # papers that have at least one submission
     answered_paper_ids = {g["paper_id"] for g in grouped_submissions}
     total_answered_papers = len(answered_paper_ids)
@@ -382,22 +393,23 @@ def teacher_dashboard():
     grouped_solutions = list(grouped_solutions.values())
 
     return render_template(
-    "teacher_dashboard.html",
-    user=user,
-    papers=papers,
-    solutions=ungraded_submissions,   # 👈 ONLY ones that still need marks
-    total_papers=total_papers,
-    total_solutions=total_solutions,
-    avg_marks=avg_marks,
-    total_students=total_students,
-    student_stats=student_stats,
-    best_student=best_student,
-    grouped_solutions=grouped_solutions,
-    total_answered_papers=total_answered_papers,
-    total_not_answered_papers=total_not_answered_papers,
-    total_graded_solutions=total_graded_solutions,
-    total_not_graded_solutions=total_not_graded_solutions,
-)
+        "teacher_dashboard.html",
+        user=user,
+        papers=papers,
+        solutions=grouped_submissions,
+        total_papers=total_papers,
+        total_solutions=total_solutions,
+        avg_marks=avg_marks,
+        total_students=total_students,
+        student_stats=student_stats,
+        best_student=best_student,
+        grouped_solutions=grouped_solutions,
+        total_answered_papers=total_answered_papers,
+        total_not_answered_papers=total_not_answered_papers,
+        total_graded_solutions=total_graded_solutions,
+        total_not_graded_solutions=total_not_graded_solutions,
+    )
+
 
 # ============================================================
 #               TEACHER — UPLOAD SAMPLE PAPER
@@ -407,7 +419,7 @@ def teacher_dashboard():
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()  # optional, store if you want
+    description = request.form.get("description", "").strip()  # (optional, not stored)
     file = request.files.get("file")
 
     if not title:
@@ -423,20 +435,32 @@ def upload_paper():
         flash("Only PDF files are allowed.", "danger")
         return redirect(url_for("teacher_dashboard"))
 
-    # Save file
-    filename = secure_filename(file.filename)
-    filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-    file.save(os.path.join(PAPERS_FOLDER, filename))
-
     db = get_db()
+
+    # =================== CLOUDINARY MODE ===================
+    if USE_CLOUDINARY:
+        # Upload as RAW file so PDFs are accepted
+        result = uploader.upload(
+            file,
+            resource_type="raw",
+            folder="educonnect/papers"
+        )
+        # Store Cloudinary public_id in "filename" column
+        stored_name = result["public_id"]
+    else:
+        # =================== LOCAL FILE MODE ===================
+        filename = secure_filename(file.filename)
+        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+        file.save(os.path.join(PAPERS_FOLDER, filename))
+        stored_name = filename
+
     db.execute(
         "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
-        (title, filename, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
+        (title, stored_name, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
     )
     db.commit()
 
     flash("Paper uploaded successfully!", "success")
-    # ✅ VERY IMPORTANT: redirect to dashboard, NOT to /upload_paper
     return redirect(url_for("teacher_dashboard"))
 
 
@@ -471,16 +495,34 @@ def delete_paper():
     row = db.execute("SELECT filename FROM papers WHERE id=?", (paper_id,)).fetchone()
 
     if row:
-        filepath = os.path.join(PAPERS_FOLDER, row["filename"])
+        stored_name = row["filename"]
+
+        # Try to delete from Cloudinary (raw resource)
+        if USE_CLOUDINARY:
+            try:
+                uploader.destroy(stored_name, resource_type="raw")
+            except Exception:
+                pass
+
+        # Also try local delete (for dev or older data)
+        filepath = os.path.join(PAPERS_FOLDER, stored_name)
         if os.path.exists(filepath):
             os.remove(filepath)
 
     # Delete all solutions belonging to this paper
     sol = db.execute("SELECT filename FROM solutions WHERE paper_id=?", (paper_id,)).fetchall()
     for s in sol:
-        f = os.path.join(SOLUTIONS_FOLDER, s["filename"])
-        if os.path.exists(f):
-            os.remove(f)
+        fname = s["filename"]
+
+        if USE_CLOUDINARY:
+            try:
+                uploader.destroy(fname, resource_type="image")
+            except Exception:
+                pass
+
+        local_path = os.path.join(SOLUTIONS_FOLDER, fname)
+        if os.path.exists(local_path):
+            os.remove(local_path)
 
     db.execute("DELETE FROM solutions WHERE paper_id=?", (paper_id,))
     db.execute("DELETE FROM papers WHERE id=?", (paper_id,))
@@ -537,10 +579,20 @@ def upload_solution():
             flash("Only JPG/PNG files are allowed.", "warning")
             return redirect(url_for("student_dashboard"))
 
-        safe = secure_filename(f.filename)
-        fname = f"sol_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe}"
-
-        f.save(os.path.join(SOLUTIONS_FOLDER, fname))
+        # =================== CLOUDINARY MODE ===================
+        if USE_CLOUDINARY:
+            result = uploader.upload(
+                f,
+                folder="educonnect/solutions",
+                resource_type="image"
+            )
+            stored_name = result["public_id"]
+        else:
+            # =================== LOCAL MODE ===================
+            safe = secure_filename(f.filename)
+            fname = f"sol_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe}"
+            f.save(os.path.join(SOLUTIONS_FOLDER, fname))
+            stored_name = fname
 
         # Every page goes into the same submission_group
         db.execute(
@@ -549,7 +601,7 @@ def upload_solution():
               (paper_id, student_username, filename, submitted_at, submission_group)
             VALUES (?, ?, ?, ?, ?)
             """,
-            (paper_id, session["username"], fname, now_str, group_id),
+            (paper_id, session["username"], stored_name, now_str, group_id),
         )
 
     db.commit()
@@ -598,6 +650,7 @@ def view_submission(group_id):
 
     current_file = files[page - 1]
 
+    # For template: we still send file ids, and <img src="/view_solution/{{ current_file }}">
     return render_template(
         "view_submission.html",
         group_id=group_id,
@@ -616,7 +669,14 @@ def view_submission(group_id):
 
 @app.route("/view_solution/<filename>")
 def view_solution(filename):
+    # If Cloudinary: redirect to hosted image URL
+    if USE_CLOUDINARY:
+        url, _ = utils.cloudinary_url(filename)
+        return redirect(url)
+
+    # Otherwise serve from local disk
     return send_from_directory(SOLUTIONS_FOLDER, filename)
+
 
 # ============================================================
 #                    TEACHER — GRADE SOLUTION
@@ -655,7 +715,7 @@ def grade_solution():
     # PASS / FAIL based on marks
     status = "PASS" if obtained_marks >= passing_marks else "FAIL"
 
-    # 🔴 IMPORTANT: update obtained_marks for ALL rows in this submission_group
+    # Update for ALL rows in this submission_group
     db.execute(
         """
         UPDATE solutions
@@ -817,7 +877,7 @@ def student_profile():
                 UPDATE users SET password=? WHERE username=?
             """, (password, old_username))
 
-        # --- Update profile picture ---
+        # --- Update profile picture (local only, small impact if lost) ---
         if avatar and avatar.filename:
             ext = avatar.filename.rsplit(".", 1)[-1].lower()
             if ext not in {"jpg", "jpeg", "png"}:
@@ -826,7 +886,6 @@ def student_profile():
 
             safe = secure_filename(avatar.filename)
             fname = f"avatar_{old_username}_{uuid.uuid4().hex[:6]}.{ext}"
-
             avatar.save(os.path.join(AVATAR_FOLDER, fname))
 
             db.execute("""
@@ -879,6 +938,7 @@ def teacher_analytics():
         avg_students=avg_students,
         avg_papers=avg_papers
     )
+
 
 # ============================================================
 #                PDF REPORT GENERATION (FINAL)
@@ -995,6 +1055,12 @@ def download_report(group_id):
 
 @app.route("/download_paper/<filename>")
 def download_paper(filename):
+    # If using Cloudinary, filename is a public_id of a RAW resource
+    if USE_CLOUDINARY:
+        url, _ = utils.cloudinary_url(filename, resource_type="raw")
+        return redirect(url)
+
+    # Local fallback
     return send_from_directory(PAPERS_FOLDER, filename)
 
 
