@@ -132,10 +132,12 @@
                 <p class="text-muted small mb-1">Uploaded on {{ p.uploaded_at }}</p>
 
 
-  {# if you now store full Cloudinary URL in p.filename #}
-<a href="{{ p.filename }}" target="_blank" class="btn btn-sm btn-outline-primary">
-    Download
+ <a href="{{ url_for('download_paper', paper_id=p.id) }}"
+   class="btn btn-sm btn-outline-primary rounded-pill"
+   target="_blank">
+  Download
 </a>
+
 
 
 
