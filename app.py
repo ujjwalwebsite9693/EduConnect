@@ -415,15 +415,14 @@ def teacher_dashboard():
 
 
 # ============================================================
-#               TEACHER — UPLOAD SAMPLE PAPER (PDF)
-#            (Cloudinary RAW + local fallback)
+#               TEACHER — UPLOAD SAMPLE PAPER (Cloudinary RAW)
 # ============================================================
 
 @app.route("/upload_paper", methods=["POST"])
 @login_required(role="teacher")
 def upload_paper():
     title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()  # optional
+    description = request.form.get("description", "").strip()
     file = request.files.get("file")
 
     if not title:
@@ -441,38 +440,34 @@ def upload_paper():
 
     db = get_db()
 
-    # ✅ If Cloudinary is configured, upload there
     if USE_CLOUDINARY:
-        try:
-            upload_result = uploader.upload(
-                file,
-                resource_type="auto",      # <-- IMPORTANT: no "raw" here
-                folder="papers",
-                use_filename=True,
-                unique_filename=True,
-                overwrite=False
-            )
-            filename = upload_result.get("secure_url")  # full https://... URL
-        except Exception as e:
-            print("Cloudinary upload error:", e)
-            flash("Error uploading to cloud storage.", "danger")
-            return redirect(url_for("teacher_dashboard"))
+        # 🔹 Upload as RAW file (NOT image) so PDF is treated as file
+        upload_result = uploader.upload(
+            file,
+            folder="papers",
+            resource_type="raw",     # <---- IMPORTANT
+            use_filename=True,
+            unique_filename=True
+        )
+        # Store the *secure* URL in DB
+        file_url = upload_result["secure_url"]
+        filename_to_store = file_url
     else:
-        # ✅ Local disk fallback (for running on your PC)
-        safe_name = secure_filename(file.filename)
-        filename_only = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{safe_name}"
-        full_path = os.path.join(PAPERS_FOLDER, filename_only)
-        file.save(full_path)
-        filename = filename_only  # store just the file name in DB
+        # Local fallback (for running on your laptop)
+        filename = secure_filename(file.filename)
+        filename = f"paper_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
+        file.save(os.path.join(PAPERS_FOLDER, filename))
+        filename_to_store = filename
 
     db.execute(
         "INSERT INTO papers (title, filename, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)",
-        (title, filename, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
+        (title, filename_to_store, session["username"], datetime.now().strftime("%Y-%m-%d %H:%M")),
     )
     db.commit()
 
     flash("Paper uploaded successfully!", "success")
     return redirect(url_for("teacher_dashboard"))
+
 
 
 # ============================================================
@@ -1069,20 +1064,12 @@ def download_report(group_id):
 
 @app.route("/download_paper/<path:filename>")
 def download_paper(filename):
-    # Ensure any % encoding is decoded (e.g. https%3A%2F%2F...)
-    filename = unquote(filename)
-
-    # 🔹 If it's a Cloudinary URL, just redirect to it
+    # If we stored a full Cloudinary URL in DB:
     if filename.startswith("http://") or filename.startswith("https://"):
-        file_url = filename
+        # For RAW resources, just redirect to the secure_url
+        return redirect(filename)
 
-        # If Cloudinary URL has no .pdf at the end, force PDF extension
-        if not file_url.lower().endswith(".pdf"):
-            file_url = file_url + ".pdf"
-
-        return redirect(file_url)
-
-    # 🔹 Otherwise, treat as local file in PAPERS_FOLDER (for local dev)
+    # Local file fallback
     return send_from_directory(PAPERS_FOLDER, filename, as_attachment=True)
 
 
