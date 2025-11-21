@@ -25,7 +25,8 @@ from cloudinary import uploader, utils
 
 from urllib.parse import unquote
 
-
+import psycopg2
+import psycopg2.extras
 
 # ============================================================
 #                     APP INITIALIZATION
@@ -93,28 +94,39 @@ DEFAULT_USERS = [
 
 
 # ============================================================
-#                    DATABASE HELPERS
+#                    DATABASE HELPERS (POSTGRES)
 # ============================================================
 
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+
 def get_db():
+    """Create PostgreSQL DB connection shared per request."""
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
+        g.db = psycopg2.connect(DATABASE_URL, sslmode="require")
+        g.db.autocommit = True
+        g.cur = g.db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    return g.cur
 
 
 @app.teardown_appcontext
 def close_db(exception):
+    """Close DB cursor + connection safely."""
+    cur = g.pop("cur", None)
     db = g.pop("db", None)
-    if db is not None:
+
+    if cur:
+        cur.close()
+    if db:
         db.close()
 
 
 def init_db():
     db = get_db()
 
-    # MAIN TABLE STRUCTURE
-    db.executescript("""
+    # USERS TABLE
+    db.execute("""
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password TEXT NOT NULL,
@@ -122,20 +134,26 @@ def init_db():
             name TEXT NOT NULL,
             profile_pic TEXT
         );
+    """)
 
+    # PAPERS TABLE
+    db.execute("""
         CREATE TABLE IF NOT EXISTS papers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title TEXT NOT NULL,
-            filename TEXT NOT NULL,    -- stores local filename OR Cloudinary public_id
+            filename TEXT NOT NULL,       -- stores Cloudinary public_id
             uploaded_by TEXT NOT NULL,
             uploaded_at TEXT NOT NULL
         );
+    """)
 
+    # SOLUTIONS TABLE
+    db.execute("""
         CREATE TABLE IF NOT EXISTS solutions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            paper_id INTEGER NOT NULL,
+            id SERIAL PRIMARY KEY,
+            paper_id INTEGER NOT NULL REFERENCES papers(id),
             student_username TEXT NOT NULL,
-            filename TEXT NOT NULL,    -- stores local filename OR Cloudinary public_id
+            filename TEXT NOT NULL,
             submitted_at TEXT NOT NULL,
             marks REAL,
             submission_group TEXT,
@@ -144,42 +162,24 @@ def init_db():
             correct INTEGER,
             incorrect INTEGER,
             total_marks INTEGER,
-            obtained_marks INTEGER,
-            passing_marks INTEGER,
-            result_status TEXT,
-            FOREIGN KEY (paper_id) REFERENCES papers (id)
+            obtained_marks REAL,
+            passing_marks REAL,
+            result_status TEXT
         );
     """)
 
-    # AUTO-ADD missing columns (SAFE MIGRATION)
-    cols = {c["name"] for c in db.execute("PRAGMA table_info(solutions)").fetchall()}
+    # ---- DEFAULT USERS ----
+    db.execute("SELECT COUNT(*) AS c FROM users;")
+    count = db.fetchone()["c"]
 
-    needed = {
-        "submission_group": "TEXT",
-        "total_questions": "INTEGER",
-        "attempted": "INTEGER",
-        "correct": "INTEGER",
-        "incorrect": "INTEGER",
-        "total_marks": "INTEGER",
-        "obtained_marks": "INTEGER",
-        "passing_marks": "INTEGER",
-        "result_status": "TEXT"
-    }
-
-    for col, ctype in needed.items():
-        if col not in cols:
-            db.execute(f"ALTER TABLE solutions ADD COLUMN {col} {ctype}")
-
-    # INSERT DEFAULT USERS IF EMPTY
-    count = db.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
     if count == 0:
         for u, p, r, n in DEFAULT_USERS:
-            db.execute(
-                "INSERT INTO users (username, password, role, name) VALUES (?, ?, ?, ?)",
-                (u, p, r, n)
-            )
+            db.execute("""
+                INSERT INTO users (username, password, role, name)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (username) DO NOTHING;
+            """, (u, p, r, n))
 
-    db.commit()
 
 
 # 🚀 Important: ensure DB exists even on Render (gunicorn import)
